@@ -20,20 +20,30 @@ router.post(`${process.env.API_MOVIES}`, async(req, res) => {
     try {
         const { category, country, year, rating } = req.body;
 
-        if (
-            category.length > 0 ||
-            country.length > 0 ||
-            year.length > 0 ||
-            rating.length > 0
-        ) {
+        if (category.length > 0 && country.length > 0) {
+            console.log("both")
+            const filterData = await Movie.find({
+                $and: [
+                    { genre: { $in: category } },
+                    { country: { $in: country } },
+                ]
+            });
+            return res.json(filterData)
+        }
+
+        if (category.length > 0) {
             const filterData = await Movie.find({
                 genre: { $in: category },
             });
-
-            if (filterData) return res.json(filterData);
+            return res.json(filterData)
+        } else if (country.length > 0) {
+            const filterData = await Movie.find({
+                country: { $in: country },
+            });
+            return res.json(filterData)
         } else {
-            const movieData = await Movie.find({});
-            if (movieData) return res.json(movieData);
+            const filterData = await Movie.find({});
+            return res.json(filterData)
         }
     } catch (error) {
         return error;
