@@ -19,8 +19,33 @@ const moviePoster = multer.diskStorage({
 router.post(`${process.env.API_MOVIES}`, async(req, res) => {
     const { genre, country, year } = req.body;
 
+    const myArray = []
+    genre.length > 0 && myArray.push(genre);
+    country.length > 0 && myArray.push(country);
+    year.length > 0 && myArray.push(year);
+
     try {
-        if (genre.length > 0 || country.length > 0 || year.length > 0) {
+        if (myArray.length === 1) {
+            const filterData = await Movie.find({
+                $or: [
+                    { genre: { $in: genre } },
+                    { country: { $in: country } },
+                    { year: { $in: year } },
+                ]
+            });
+            return res.json(filterData)
+        }
+        if (myArray.length === 3) {
+            const filterData = await Movie.find({
+                $and: [
+                    { genre: { $in: genre } },
+                    { country: { $in: country } },
+                    { year: { $in: year } },
+                ]
+            });
+            return res.json(filterData)
+        }
+        if (myArray.length == 2) {
             const filterData = await Movie.find({
                 $or: [{
                         $and: [
@@ -32,13 +57,6 @@ router.post(`${process.env.API_MOVIES}`, async(req, res) => {
                         $and: [
                             { genre: { $in: genre } },
                             { country: { $in: country } },
-                            { year: { $in: year } },
-                        ]
-                    },
-                    {
-                        $and: [
-                            { genre: { $in: genre } },
-                            { country: { $in: country } },
                         ]
                     },
                     {
@@ -51,10 +69,10 @@ router.post(`${process.env.API_MOVIES}`, async(req, res) => {
                         $and: [
                             { country: { $in: country } },
                             { year: { $in: year } },
-                        ]
+                        ],
                     },
 
-                ]
+                ],
             });
             return res.json(filterData)
         } else {
