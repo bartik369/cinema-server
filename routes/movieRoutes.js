@@ -18,14 +18,14 @@ const moviePoster = multer.diskStorage({
 
 router.post(`${process.env.API_MOVIES}`, async(req, res) => {
     const { genre, country, year } = req.body;
+    const filterArray = [];
 
-    const myArray = []
-    genre.length > 0 && myArray.push(genre);
-    country.length > 0 && myArray.push(country);
-    year.length > 0 && myArray.push(year);
+    genre.length > 0 && filterArray.push(genre);
+    country.length > 0 && filterArray.push(country);
+    year.length > 0 && filterArray.push(year);
 
     try {
-        if (myArray.length === 1) {
+        if (filterArray.length === 1) {
             const filterData = await Movie.find({
                 $or: [
                     { genre: { $in: genre } },
@@ -35,25 +35,9 @@ router.post(`${process.env.API_MOVIES}`, async(req, res) => {
             });
             return res.json(filterData)
         }
-        if (myArray.length === 3) {
-            const filterData = await Movie.find({
-                $and: [
-                    { genre: { $in: genre } },
-                    { country: { $in: country } },
-                    { year: { $in: year } },
-                ]
-            });
-            return res.json(filterData)
-        }
-        if (myArray.length == 2) {
+        if (filterArray.length === 2) {
             const filterData = await Movie.find({
                 $or: [{
-                        $and: [
-                            { genre: { $in: genre } },
-                            { country: { $in: country } },
-                        ]
-                    },
-                    {
                         $and: [
                             { genre: { $in: genre } },
                             { country: { $in: country } },
@@ -73,6 +57,16 @@ router.post(`${process.env.API_MOVIES}`, async(req, res) => {
                     },
 
                 ],
+            });
+            return res.json(filterData)
+        }
+        if (filterArray.length === 3) {
+            const filterData = await Movie.find({
+                $and: [
+                    { genre: { $in: genre } },
+                    { country: { $in: country } },
+                    { year: { $in: year } },
+                ]
             });
             return res.json(filterData)
         } else {
