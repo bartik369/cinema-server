@@ -17,63 +17,28 @@ const moviePoster = multer.diskStorage({
 });
 
 router.post(`${process.env.API_MOVIES}`, async(req, res) => {
-    const { genre, country, year } = req.body;
-    const filterArray = [];
+    const { genre, country, year, rating } = req.body;
+    const filterObj = {};
 
-    genre.length > 0 && filterArray.push(genre);
-    country.length > 0 && filterArray.push(country);
-    year.length > 0 && filterArray.push(year);
+    if (genre.length > 0) {
+        filterObj.genre = { $in: genre };
+    }
+
+    if (country.length > 0) {
+        filterObj.country = { $in: country };
+    }
+
+    if (year.length > 0) {
+        filterObj.year = { $in: year };
+    }
+
+    if (rating.length > 0) {
+        filterObj.rating = { $in: rating };
+    }
 
     try {
-        if (filterArray.length === 1) {
-            const filterData = await Movie.find({
-                $or: [
-                    { genre: { $in: genre } },
-                    { country: { $in: country } },
-                    { year: { $in: year } },
-                ]
-            });
-            return res.json(filterData)
-        }
-        if (filterArray.length === 2) {
-            const filterData = await Movie.find({
-                $or: [{
-                        $and: [
-                            { genre: { $in: genre } },
-                            { country: { $in: country } },
-                        ]
-                    },
-                    {
-                        $and: [
-                            { genre: { $in: genre } },
-                            { year: { $in: year } },
-                        ]
-                    },
-                    {
-                        $and: [
-                            { country: { $in: country } },
-                            { year: { $in: year } },
-                        ],
-                    },
-
-                ],
-            });
-            return res.json(filterData)
-        }
-        if (filterArray.length === 3) {
-            const filterData = await Movie.find({
-                $and: [
-                    { genre: { $in: genre } },
-                    { country: { $in: country } },
-                    { year: { $in: year } },
-                ]
-            });
-            return res.json(filterData)
-        } else {
-            const filterData = await Movie.find({});
-            return res.json(filterData)
-        }
-
+        const filteredData = await Movie.find(filterObj);
+        return res.json(filteredData)
     } catch (error) {
         console.log(error)
     }
@@ -230,31 +195,12 @@ router.post(`${process.env.API_ADD_FAVORITE}`, async(req, res) => {
 
 router.get(`${process.env.API_MOVIE_PROPERTIES}`, async(req, res) => {
     try {
-        const genre = [];
-        const country = [];
-        const year = [];
-        const rating = [];
         const movieData = await Movie.find({});
-        movieData.map((item) => {
-            item.genre.map((el) => {
-                genre.push(el);
-            });
-            country.push(item.country);
-            year.push(item.year);
-            rating.push(item.rating);
-        });
-        const genreArr = genre.filter((value, index, self) => {
-            return self.indexOf(value) === index;
-        });
-        const countryArr = country.filter((value, index, self) => {
-            return self.indexOf(value) === index;
-        });
-        const yearArr = year.filter((value, index, self) => {
-            return self.indexOf(value) === index;
-        });
-        const ratingArr = rating.filter((value, index, self) => {
-            return self.indexOf(value) === index;
-        });
+
+        const genreArr = [...new Set(movieData.flatMap((item) => item.genre))];
+        const countryArr = [...new Set(movieData.map((item) => item.country))];
+        const yearArr = [...new Set(movieData.map((item) => item.year))];
+        const ratingArr = [...new Set(movieData.map((item) => item.rating))];
 
         return res.json({ genreArr, countryArr, yearArr, ratingArr });
     } catch (error) {
