@@ -1,5 +1,6 @@
 import express from 'express';
 import ActorModel from '../models/media/actor.js';
+import MovieModel from '../models/media/movie.js'
 import multer from 'multer';
 import dotenv from 'dotenv';
 
@@ -13,6 +14,33 @@ const actorPortrait = multer.diskStorage({
     filename: function(req, file, cb) {
         cb(null, file.originalname);
     },
+});
+
+
+router.get(`${process.env.API_ACTOR}`, async(req, res) => {
+    try {
+        const { id } = req.params;
+        const actorData = await ActorModel.findOne({ _id: id });
+        return res.json(actorData)
+
+    } catch (error) {
+        return error;
+    }
+});
+
+router.get(`${process.env.API_MOVIE_BY_ACTOR}`, async(req, res) => {
+    try {
+        const { id } = req.params;
+
+        const actorData = await ActorModel.findOne({ _id: id });
+        const moviesData = await MovieModel.find({
+            actors: { $all: actorData.nameRu },
+        })
+        return res.json(moviesData)
+
+    } catch (error) {
+        return error;
+    }
 });
 
 router.get(`${process.env.API_ACTORS}`, async(req, res) => {

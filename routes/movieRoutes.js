@@ -64,26 +64,29 @@ router.get(`${process.env.API_TOP_MOVIES}`, async(req, res) => {
     }
 });
 
-router.get(`${process.env.API_MOVIE}`, async(req, res) => {
+
+router.post(`${process.env.API_MOVIE}`, async(req, res) => {
     try {
-        const { id } = req.params;
-        const movieData = await Movie.findOne({ _id: id });
+        const { id } = req.body;
+        const movieData = await Movie.findOne({ _id: id })
 
         if (movieData) {
             return res.json(movieData);
         }
     } catch (error) {
-        return error;
+        return res.status(404).json({ message: 'movie not found' });
     }
 });
 
 router.post(`${process.env.API_SEARCH_MOVIE}`, async(req, res) => {
     try {
         const { search } = req.body;
+
         const movieData = await Movie.find({
             titleRu: { $options: 'i', $regex: search },
         });
         return res.json(movieData);
+
     } catch (error) {
         return error;
     }
@@ -160,6 +163,7 @@ router.post(`${process.env.API_ADD_FAVORITE}`, async(req, res) => {
     try {
         const { userId, movieId } = req.body;
         const existRecord = await Favorite.findOne({ userId: userId });
+
         if (!existRecord) {
             const newRecord = new Favorite({
                 userId: userId,
@@ -184,7 +188,6 @@ router.post(`${process.env.API_ADD_FAVORITE}`, async(req, res) => {
                     $push: { movies: movieId },
                 });
                 await newData.save();
-                console.log(newData);
                 return res.json(newData);
             }
         }

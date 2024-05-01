@@ -177,7 +177,6 @@ router.post(`${process.env.API_LOGOUT}`,
             const { cookie } = req.headers;
             const refreshToken = cookie.split("refreshToken=")[1].split(";")[0];
             await Token.deleteOne({ refreshToken: refreshToken });
-            res.clearCookie('accessToken');
             res.clearCookie('refreshToken');
             return res.status(200).json({ message: serverConst.logoutSuccess });
         } catch (error) { console.log(error) }
