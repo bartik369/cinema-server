@@ -45,10 +45,14 @@ router.get(`${process.env.API_MOVIE_BY_ACTOR}`, async(req, res) => {
 
 router.get(`${process.env.API_ACTORS}`, async(req, res) => {
     try {
-        const actorData = await ActorModel.find({});
-
-        if (actorData) {
-            return res.json(actorData);
+        console.log('fetching actors')
+        const { page, limit } = req.query;
+        const data = await ActorModel.find({}).limit(limit).skip((page - 1) * limit);
+        if (data) {
+            const per_page = 10;
+            const total = data.length;
+            const total_pages = 3;
+            return res.json({ page, per_page, total, total_pages, data });
         }
     } catch (error) {
         return error;
