@@ -45,15 +45,29 @@ router.get(`${process.env.API_MOVIE_BY_ACTOR}`, async(req, res) => {
 
 router.get(`${process.env.API_ACTORS}`, async(req, res) => {
     try {
-        console.log('fetching actors')
-        const { page, limit } = req.query;
-        const data = await ActorModel.find({}).limit(limit).skip((page - 1) * limit);
-        if (data) {
-            const per_page = 10;
-            const total = data.length;
-            const total_pages = 3;
-            return res.json({ page, per_page, total, total_pages, data });
+        const { page, perPage, search } = req.query;
+        const countActors = await ActorModel.find({});
+        const per_page = perPage;
+        const total = countActors.length;
+        let data;
+        let total_pages;
+
+        if (search.length == 0) {
+            data = await ActorModel.find({}).limit(perPage).skip((page - 1) * perPage);
+            total_pages = Math.ceil(total / perPage);
         }
+
+        if (search.length > 0) {
+            data = await ActorModel.find({
+                $or: [
+                    { nameRu: { $options: 'i', $regex: search } },
+                    { nameEn: { $options: 'i', $regex: search } },
+                ]
+            }).limit(perPage).skip((page - 1) * perPage);
+            total_pages = Math.ceil(data.length / perPage);
+        }
+
+        return res.json({ page, per_page, total, total_pages, data });
     } catch (error) {
         return error;
     }
