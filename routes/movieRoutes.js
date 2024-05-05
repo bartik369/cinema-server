@@ -17,7 +17,12 @@ const moviePoster = multer.diskStorage({
 });
 
 router.post(`${process.env.API_MOVIES}`, async(req, res) => {
-    const { genre, country, year, rating } = req.body;
+    const { genre, country, year, rating } = req.body.filter;
+    const { page } = req.body;
+    const totalMovies = await Movie.find({})
+    const per_page = 21
+    const total = totalMovies.length;
+    let total_pages;
     const filterObj = {};
 
     if (genre.length > 0) {
@@ -37,8 +42,13 @@ router.post(`${process.env.API_MOVIES}`, async(req, res) => {
     }
 
     try {
-        const filteredData = await Movie.find(filterObj);
-        return res.json(filteredData)
+        const data = await Movie.find(filterObj).limit(21).skip((page - 1) * 21);
+        if (Object.keys(filterObj).length == 0) {
+            total_pages = Math.ceil(total / per_page)
+        } else {
+            total_pages = Math.ceil(data.length / per_page)
+        }
+        return res.json({ page, per_page, total, total_pages, data });
     } catch (error) {
         console.log(error)
     }
