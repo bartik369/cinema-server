@@ -7,6 +7,7 @@ import movieRoutes from './routes/movieRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import conversationRoutes from './routes/conversationRoutes.js';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { createServer } from 'http';
@@ -31,7 +32,14 @@ app.use(
     })
 );
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use('/api', actorRoutes, movieRoutes, userRoutes, profileRoutes, adminRoutes);
+app.use('/api',
+    actorRoutes,
+    movieRoutes,
+    userRoutes,
+    profileRoutes,
+    adminRoutes,
+    conversationRoutes,
+);
 app.use('/uploads', express.static(__dirname + '/uploads'));
 
 server.listen(PORT, () => {

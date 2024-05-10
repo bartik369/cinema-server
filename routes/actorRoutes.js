@@ -24,7 +24,7 @@ router.get(`${process.env.API_ACTOR}`, async(req, res) => {
         return res.json(actorData)
 
     } catch (error) {
-        return res.status(404).json({ message: 'movie not found' });
+        return res.status(404).json({ message: 'actor not found' });
     }
 });
 
