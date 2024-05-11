@@ -60,13 +60,10 @@ router.get("/delete-conversation", async(req, res) => {
     }
 });
 
-router.post(
-    "/create-message",
-    multer({ storage: conversationMedia }).single("file"),
+router.post("/create-message", multer({ storage: conversationMedia }).single("file"),
     async(req, res) => {
         try {
-            const { senderId, recipientId, conversationId, message, replyTo } =
-            req.body;
+            const { senderId, recipientId, conversationId, message, replyTo } = req.body;
             const media = req.file;
             let newMessage;
 
@@ -103,6 +100,7 @@ router.post(
         } catch (error) {}
     }
 );
+
 router.get("/messages/:id", async(req, res) => {
     try {
         const { id } = req.params;
@@ -112,6 +110,33 @@ router.get("/messages/:id", async(req, res) => {
         }
     } catch (error) {}
 });
+
+router.post("/active-conversation", async(req, res) => {
+    try {
+        const { id } = req.body;
+        if (id) {
+            const activeConversation = await MessagesModel.findOne({}).sort({ updatedAt: -1 })
+
+            if (activeConversation) {
+                return res.json(activeConversation.conversationId)
+            }
+        }
+    } catch (error) {}
+});
+router.post("/active-messages", async(req, res) => {
+    try {
+        const { id } = req.body;
+        if (id) {
+            const messages = await MessagesModel.find({
+                conversationId: id
+            });
+            if (messages) {
+                return res.json(messages)
+            }
+        }
+    } catch (error) {}
+});
+
 router.post("/recipient-messages", async(req, res) => {
     try {
         const { id } = req.body;
@@ -129,10 +154,25 @@ router.post("/recipient-messages", async(req, res) => {
         }
     } catch (error) {}
 });
+router.post("/get-conversation", async(req, res) => {
+    try {
+        const { id } = req.body;
+
+        if (id) {
+            const conversation = await ConversationModel.findOne({
+                participants: { $all: id },
+            });
+            if (conversation) {
+                return res.json(conversation._id);
+            }
+        }
+    } catch (error) {}
+});
 
 router.get("/get-conversations/:id", async(req, res) => {
     try {
         const { id } = req.params;
+        let groupedUserInfo = []
 
         if (id) {
             const conversations = await ConversationModel.find({
@@ -143,14 +183,25 @@ router.get("/get-conversations/:id", async(req, res) => {
                 const filteredUsersId = conversations.flatMap((item) =>
                     item.participants.filter((user) => user != id)
                 );
-                const usersInfo = await UserModel.find({
+
+                let usersInfo = await UserModel.find({
                     _id: { $in: filteredUsersId },
-                });
+                }).lean()
+
+
+                groupedUserInfo = conversations.map((conv) => {
+                    if (conv.participants.includes(id.toString())) {
+                        for (let x = 0; x < usersInfo.length; x++) {
+                            return {...usersInfo[x], keys: conv._id.toString() }
+                        }
+                    }
+                })
+
+                // Get last mesaages of each conversations
                 const conversationsId = conversations.flatMap((item) =>
                     item._id.toString()
                 );
-                // Get last mesaages of each conversations
-                const lastMessagesData = await MessagesModel.aggregate([{
+                const lastMessages = await MessagesModel.aggregate([{
                         $match: { conversationId: { $in: conversationsId } },
                     },
                     {
@@ -223,8 +274,11 @@ router.get("/get-conversations/:id", async(req, res) => {
                     },
                 ]);
 
-                if (usersInfo && lastMessagesData) {
-                    return res.json({ usersInfo: usersInfo, lastMessagesData: lastMessagesData });
+                console.log(groupedUserInfo)
+
+
+                if (groupedUserInfo && lastMessages) {
+                    return res.json({ usersInfo: groupedUserInfo, lastMessages: lastMessages });
                 }
             } else {}
         }
