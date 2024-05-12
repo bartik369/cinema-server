@@ -188,15 +188,15 @@ router.get("/get-conversations/:id", async(req, res) => {
                     _id: { $in: filteredUsersId },
                 }).lean()
 
-
-                groupedUserInfo = conversations.map((conv) => {
-                    if (conv.participants.includes(id.toString())) {
-                        for (let x = 0; x < usersInfo.length; x++) {
-                            return {...usersInfo[x], keys: conv._id.toString() }
-                        }
-                    }
-                })
-
+                if (usersInfo) {
+                    usersInfo.map((user) => {
+                        conversations.flatMap((conv) => {
+                            if (conv.participants.includes(user._id.toString())) {
+                                groupedUserInfo.push({...user, conversationsId: conv._id.toString() })
+                            }
+                        })
+                    })
+                }
                 // Get last mesaages of each conversations
                 const conversationsId = conversations.flatMap((item) =>
                     item._id.toString()
@@ -275,7 +275,6 @@ router.get("/get-conversations/:id", async(req, res) => {
                 ]);
 
                 console.log(groupedUserInfo)
-
 
                 if (groupedUserInfo && lastMessages) {
                     return res.json({ usersInfo: groupedUserInfo, lastMessages: lastMessages });
