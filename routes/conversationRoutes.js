@@ -27,7 +27,8 @@ router.post("/open-conversation", async(req, res) => {
         const supportData = await UserModel.findOne({
             roles: { $all: "SUPPORT" },
         });
-        if (userData._id != supportData._id) {
+
+        if (userData._id.toString() !== supportData._id.toString()) {
             const existConversation = await ConversationModel.findOne({
                 creatorId: userData._id.toString(),
             });
@@ -65,6 +66,7 @@ router.post("/create-message", multer({ storage: conversationMedia }).single("fi
         try {
 
             const { senderId, recipientId, conversationId, content, replyTo } = req.body;
+            console.log(req.body)
             const media = req.file;
             let newMessage;
 
