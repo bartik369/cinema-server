@@ -35,8 +35,8 @@ const MessagesSchema = new Schema({
         default: Date.now
     },
     read: {
-        type: Boolean,
-        default: false,
+        type: String,
+        default: 'no',
     },
     replyTo: {
         type: String,

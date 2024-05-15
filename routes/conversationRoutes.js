@@ -27,7 +27,7 @@ router.post("/open-conversation", async(req, res) => {
         const supportData = await UserModel.findOne({
             roles: { $all: "SUPPORT" },
         });
-        if (userData) {
+        if (userData._id != supportData._id) {
             const existConversation = await ConversationModel.findOne({
                 creatorId: userData._id.toString(),
             });
@@ -63,9 +63,11 @@ router.get("/delete-conversation", async(req, res) => {
 router.post("/create-message", multer({ storage: conversationMedia }).single("file"),
     async(req, res) => {
         try {
-            const { senderId, recipientId, conversationId, message, replyTo } = req.body;
+
+            const { senderId, recipientId, conversationId, content, replyTo } = req.body;
             const media = req.file;
             let newMessage;
+
 
             if (media) {
                 const mediaInfo = new ConversationMediaModel({
@@ -80,7 +82,7 @@ router.post("/create-message", multer({ storage: conversationMedia }).single("fi
                         conversationId: conversationId,
                         senderId: senderId,
                         recipientId: recipientId,
-                        content: message || "",
+                        content: content || "",
                         mediaId: mediaInfo._id || "",
                         replyTo: replyTo || "",
                     });
@@ -91,7 +93,7 @@ router.post("/create-message", multer({ storage: conversationMedia }).single("fi
                     conversationId: conversationId,
                     senderId: senderId,
                     recipientId: recipientId,
-                    content: message || "",
+                    content: content || "",
                     replyTo: replyTo || "",
                 });
                 await newMessage.save();
@@ -100,6 +102,50 @@ router.post("/create-message", multer({ storage: conversationMedia }).single("fi
         } catch (error) {}
     }
 );
+
+router.post("/update-message", multer({ storage: conversationMedia }).single("file"), async(req, res) => {
+    try {
+        const { _id, senderId, recipientId, conversationId, content, replyTo } = req.body;
+        const media = req.file;
+        let updatedMessage;
+        const existMessage = await MessagesModel.findById(_id);
+
+        if (existMessage) {
+            if (media) {
+                const existMedia = await ConversationMediaModel.findOne({ conversationId: conversationId });
+
+                if (existMedia) {
+                    const updatedMedia = await ConversationMediaModel.findByIdAndUpdate(existMedia._id, {
+                        file: media.originalname,
+                    });
+                    await updatedMedia.save();
+                    updatedMessage = await MessagesModel.findByIdAndUpdate(existMessage._id, {
+                        content: content || "",
+                        mediaId: existMedia._id || "",
+                        replyTo: replyTo || "",
+                    })
+                }
+            } else {
+                updatedMessage = await MessagesModel.findByIdAndUpdate(existMessage._id, {
+                    content: content || "",
+                    replyTo: replyTo || "",
+                })
+            }
+            return res.json(updatedMessage)
+        } else { return null }
+
+    } catch (error) {}
+});
+
+router.post("/message/", async(req, res) => {
+    try {
+        const { id } = req.body;
+        if (id) {
+            const messages = await MessagesModel.findById(id);
+            return res.json(messages);
+        }
+    } catch (error) {}
+});
 
 router.get("/messages/:id", async(req, res) => {
     try {
@@ -111,6 +157,22 @@ router.get("/messages/:id", async(req, res) => {
     } catch (error) {}
 });
 
+router.delete("/delete-message/:id", async(req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (id) {
+            const deletedMessage = await MessagesModel.findByIdAndDelete(id);
+            if (deletedMessage) {
+                return res.json({ success: true, id: id })
+            } else {
+                return null
+            }
+        }
+    } catch (error) {}
+});
+
+
 router.post("/active-conversation", async(req, res) => {
     try {
         const { id } = req.body;
@@ -118,14 +180,15 @@ router.post("/active-conversation", async(req, res) => {
             const activeConversation = await MessagesModel.findOne({}).sort({ updatedAt: -1 })
 
             if (activeConversation) {
-                return res.json(activeConversation.conversationId)
+                return res.json(activeConversation)
             }
         }
     } catch (error) {}
 });
-router.post("/active-messages", async(req, res) => {
+
+router.get("/active-messages/:id", async(req, res) => {
     try {
-        const { id } = req.body;
+        const { id } = req.params;
         if (id) {
             const messages = await MessagesModel.find({
                 conversationId: id
@@ -137,9 +200,9 @@ router.post("/active-messages", async(req, res) => {
     } catch (error) {}
 });
 
-router.post("/recipient-messages", async(req, res) => {
+router.get("/recipient-messages/:id", async(req, res) => {
     try {
-        const { id } = req.body;
+        const { id } = req.params;
 
         if (id) {
             const conversation = await ConversationModel.findOne({
@@ -172,7 +235,7 @@ router.post("/get-conversation", async(req, res) => {
 router.get("/get-conversations/:id", async(req, res) => {
     try {
         const { id } = req.params;
-        let groupedUserInfo = []
+        let groupedUserInfo = [];
 
         if (id) {
             const conversations = await ConversationModel.find({
@@ -188,11 +251,15 @@ router.get("/get-conversations/:id", async(req, res) => {
                     _id: { $in: filteredUsersId },
                 }).lean()
 
+                // Add conversation and ticket IDs to each user's info
                 if (usersInfo) {
                     usersInfo.map((user) => {
-                        conversations.flatMap((conv) => {
-                            if (conv.participants.includes(user._id.toString())) {
-                                groupedUserInfo.push({...user, conversationsId: conv._id.toString() })
+                        conversations.flatMap((conversation) => {
+                            if (conversation.participants.includes(user._id.toString())) {
+                                groupedUserInfo.push({...user,
+                                    conversationId: conversation._id.toString(),
+                                    ticketNumber: conversation.ticketNumber,
+                                })
                             }
                         })
                     })
@@ -274,9 +341,9 @@ router.get("/get-conversations/:id", async(req, res) => {
                     },
                 ]);
 
-                console.log(groupedUserInfo)
 
                 if (groupedUserInfo && lastMessages) {
+
                     return res.json({ usersInfo: groupedUserInfo, lastMessages: lastMessages });
                 }
             } else {}
