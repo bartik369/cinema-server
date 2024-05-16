@@ -66,7 +66,6 @@ router.post("/create-message", multer({ storage: conversationMedia }).single("fi
         try {
 
             const { senderId, recipientId, conversationId, content, replyTo } = req.body;
-            console.log(req.body)
             const media = req.file;
             let newMessage;
 
@@ -351,6 +350,29 @@ router.get("/get-conversations/:id", async(req, res) => {
             } else {}
         }
     } catch (error) {}
+});
+
+router.post("/mark-message-read/", async(req, res) => {
+    try {
+        const { userId, conversationId } = req.body;
+        const existConversation = await ConversationModel.findById(conversationId);
+        const existUser = await UserModel.findById(userId);
+
+        if (existConversation && existUser) {
+            const messages = await MessagesModel.updateMany({
+                $and: [
+                    { conversationId: existConversation._id },
+                    { recipientId: existUser._id },
+                    { read: 'no' },
+                ],
+            }, { read: 'yes' });
+
+            return res.json(messages);
+
+        }
+    } catch (error) {
+        console.log(error)
+    }
 });
 
 export default router;
