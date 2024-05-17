@@ -8,12 +8,14 @@ import userRoutes from './routes/userRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import conversationRoutes from './routes/conversationRoutes.js';
+import checkMediaAccess from './middleware/checkMediaAccess.js';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { createServer } from 'http';
 import * as severConst from './utils/constants.js'
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import path from 'path';
 
 const __filename = fileURLToPath(
     import.meta.url);
@@ -40,7 +42,10 @@ app.use('/api',
     adminRoutes,
     conversationRoutes,
 );
+
+app.use('/uploads/converations/', checkMediaAccess, express.static(__dirname + 'uploads/conversations'))
 app.use('/uploads', express.static(__dirname + '/uploads'));
+// app.use('/media/messenger/', checkMediaAccess, express.static(path.join(__dirname, 'media/messenger')))
 
 server.listen(PORT, () => {
     console.log(`${severConst.serverStart} ${PORT}`);
