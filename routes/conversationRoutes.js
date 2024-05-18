@@ -277,85 +277,78 @@ router.get("/get-conversations/:id", async(req, res) => {
                 );
 
 
-                if (conversationsId.length > 0) {
+                if (conversationsId.length) {
                     lastMessages = await MessagesModel.aggregate([{
-                            $match: { conversationId: { $in: conversationsId } },
+                            $match: { conversationId: { $in: conversationsId } }
                         },
                         {
                             $project: {
                                 conversationId: 1,
-                                content: { $substr: ["$content", 0, 47] },
+                                content: 1,
                                 createdAt: 1,
                                 updatedAt: 1,
                                 senderId: 1,
                                 recipientId: 1,
                                 read: 1,
-                                replyTo: 1,
-                            },
+                            }
                         },
                         {
                             $sort: {
-                                conversationId: 1,
-                            },
+                                conversationId: 1
+                            }
                         },
                         {
                             $group: {
                                 _id: "$_id",
                                 conversationId: { $push: "$conversationId" },
                                 content: {
-                                    $first: "$content",
+                                    $first: "$content"
                                 },
                                 createdAt: {
-                                    $first: "$createdAt",
+                                    $first: "$createdAt"
                                 },
                                 updatedAt: {
-                                    $first: "$createdAt",
+                                    $first: "$createdAt"
                                 },
                                 senderId: {
-                                    $first: "$senderId",
+                                    $first: "$senderId"
                                 },
                                 recipientId: {
-                                    $first: "$recipientId",
+                                    $first: "$recipientId"
                                 },
                                 read: {
-                                    $first: "$read",
+                                    $first: "$read"
                                 },
-                                replyTo: {
-                                    $first: "$replyTo",
-                                }
-                            },
+                            }
                         },
                         {
                             $sort: {
-                                updatedAt: -1,
-                            },
+                                updatedAt: -1
+                            }
                         },
                         {
                             $group: {
                                 _id: "$conversationId",
                                 content: {
-                                    $first: "$content",
+                                    $first: "$content"
                                 },
                                 createdAt: {
-                                    $first: "$createdAt",
+                                    $first: "$createdAt"
                                 },
                                 updatedAt: {
-                                    $first: "$createdAt",
+                                    $first: "$createdAt"
                                 },
                                 senderId: {
-                                    $first: "$senderId",
+                                    $first: "$senderId"
                                 },
                                 recipientId: {
-                                    $first: "$recipientId",
+                                    $first: "$recipientId"
                                 },
                                 read: {
-                                    $first: "$read",
+                                    $first: "$read"
                                 },
-                                replyTo: {
-                                    $first: "$replyTo",
-                                }
-                            },
-                        },
+                            }
+                        }
                     ]);
                 }
             } else {}
@@ -365,6 +358,8 @@ router.get("/get-conversations/:id", async(req, res) => {
 
     } catch (error) {}
 });
+
+
 
 router.post("/mark-message-read/", async(req, res) => {
     try {
