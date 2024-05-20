@@ -11,6 +11,10 @@ const ConversationSchema = new Schema({
         type: String,
         required: true,
     },
+    active: {
+        type: Boolean,
+        default: false,
+    },
     createdAt: {
         type: Date,
         default: Date.now

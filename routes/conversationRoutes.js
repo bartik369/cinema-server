@@ -173,21 +173,6 @@ router.delete("/delete-message/:id", async(req, res) => {
     } catch (error) {}
 });
 
-
-router.post("/active-conversation", async(req, res) => {
-    try {
-        const { id } = req.body;
-        if (id) {
-            const activeConversation = await MessagesModel.findOne({}).sort({ updatedAt: -1 });
-
-            if (activeConversation) {
-
-                return res.json(activeConversation)
-            }
-        }
-    } catch (error) {}
-});
-
 router.get("/active-messages/:id", async(req, res) => {
     try {
         const { id } = req.params;
@@ -219,16 +204,68 @@ router.get("/recipient-messages/:id", async(req, res) => {
         }
     } catch (error) {}
 });
+
+//set active conversation
 router.post("/get-conversation", async(req, res) => {
     try {
         const { id } = req.body;
 
+        console.log(id)
+
         if (id) {
-            const conversation = await ConversationModel.findOne({
-                participants: { $all: id },
+            const existActiveConversation = await ConversationModel.findOne({
+                $and: [
+                    { active: true },
+                    { participants: { $all: id } },
+                ]
             });
-            if (conversation) {
-                return res.json(conversation._id);
+
+            if (existActiveConversation) {
+                return res.json(existActiveConversation._id.toString())
+            } else {
+                const findActiveConversation = await ConversationModel.findOne({
+                    active: true,
+                });
+                if (findActiveConversation) {
+                    const resetActiveConversation = await ConversationModel.findByIdAndUpdate(findActiveConversation._id, {
+                        active: false,
+                    });
+                    await resetActiveConversation.save();
+                    const conversation = await ConversationModel.findOne({
+                        participants: { $all: id },
+                    });
+                    if (conversation) {
+                        const setActiveConversation = await ConversationModel.findByIdAndUpdate(conversation._id, {
+                            active: true,
+                        });
+                        await setActiveConversation.save();
+                        return res.json(setActiveConversation._id.toString());
+                    }
+                }
+            }
+        }
+    } catch (error) {}
+});
+
+router.post("/active-conversation", async(req, res) => {
+    try {
+        const { id } = req.body;
+        if (id) {
+            const existUser = await UserModel.findById(id);
+
+            if (existUser) {
+                const activeConversation = await ConversationModel.findOne({
+                    $and: [
+                        { participants: { $all: id } },
+                        { active: true }
+                    ]
+                });
+
+                if (activeConversation) {
+                    res.json(activeConversation)
+                } else {
+
+                }
             }
         }
     } catch (error) {}
@@ -379,6 +416,37 @@ router.post("/mark-message-read/", async(req, res) => {
             return res.json(messages);
 
         }
+    } catch (error) {
+        console.log(error)
+    }
+});
+router.get("/unread-messages/:id", async(req, res) => {
+    try {
+        const { id } = req.params;
+        const existUser = await UserModel.findById(id);
+        const existConversation = await ConversationModel.find({
+            participants: { $all: id }
+        });
+        let conversationsId = [];
+        existConversation.map((item) => { conversationsId.push(item._id.toString()) });
+
+        if (existConversation && existUser) {
+            const unreadMessages = await MessagesModel.find({
+                $and: [
+                    { conversationId: { $in: conversationsId } },
+                    { read: 'no' },
+                ]
+            });
+
+            // if (unreadMessages) {
+
+            //     for (let x = 0; x <= unreadMessages.length; x++) {
+            //         console.log(unreadMessages[x])
+            //     }
+            //     // return res.json(unreadMessages)
+            // }
+        }
+
     } catch (error) {
         console.log(error)
     }

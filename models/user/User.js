@@ -14,6 +14,10 @@ const UserScheme = new mongoose.Schema({
         type: String,
         ref: 'Members',
     }],
+    avatar: {
+        type: String,
+        default: '',
+    },
 });
 
 const User = mongoose.model('User', UserScheme);
