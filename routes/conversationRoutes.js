@@ -55,20 +55,23 @@ router.post("/open-conversation", async(req, res) => {
         console.log(error);
     }
 });
-router.get("/delete-conversation", async(req, res) => {
-    try {} catch (error) {
-        console.log(error);
-    }
-});
+
 
 router.post("/create-message", multer({ storage: conversationMedia }).single("file"),
     async(req, res) => {
-        try {
 
+        try {
             const { senderId, recipientId, conversationId, content, replyTo } = req.body;
             const media = req.file;
             let newMessage;
 
+            if (conversationId) {
+                let date = new Date();
+                const updateConversationDate = await ConversationModel.findByIdAndUpdate(conversationId, {
+                    updatedAt: date.toISOString()
+                });
+                await updateConversationDate.save()
+            }
 
             if (media) {
                 const mediaInfo = new ConversationMediaModel({
@@ -106,14 +109,16 @@ router.post("/create-message", multer({ storage: conversationMedia }).single("fi
 
 router.post("/update-message", multer({ storage: conversationMedia }).single("file"), async(req, res) => {
     try {
-        const { _id, senderId, recipientId, conversationId, content, replyTo } = req.body;
+        const { _id, conversationId, content, replyTo } = req.body;
         const media = req.file;
         let updatedMessage;
         const existMessage = await MessagesModel.findById(_id);
 
         if (existMessage) {
             if (media) {
-                const existMedia = await ConversationMediaModel.findOne({ conversationId: conversationId });
+                const existMedia = await ConversationMediaModel.findOne({
+                    conversationId: conversationId
+                });
 
                 if (existMedia) {
                     const updatedMedia = await ConversationMediaModel.findByIdAndUpdate(existMedia._id, {
@@ -150,7 +155,9 @@ router.post("/message/", async(req, res) => {
 
 router.get("/messages/:id", async(req, res) => {
     try {
+
         const { id } = req.params;
+        console.log('id is: ', id)
         if (id) {
             const messages = await MessagesModel.find({ conversationId: id });
             return res.json(messages);
@@ -210,8 +217,6 @@ router.post("/get-conversation", async(req, res) => {
     try {
         const { id } = req.body;
 
-        console.log(id)
-
         if (id) {
             const existActiveConversation = await ConversationModel.findOne({
                 $and: [
@@ -226,6 +231,7 @@ router.post("/get-conversation", async(req, res) => {
                 const findActiveConversation = await ConversationModel.findOne({
                     active: true,
                 });
+
                 if (findActiveConversation) {
                     const resetActiveConversation = await ConversationModel.findByIdAndUpdate(findActiveConversation._id, {
                         active: false,
@@ -234,13 +240,28 @@ router.post("/get-conversation", async(req, res) => {
                     const conversation = await ConversationModel.findOne({
                         participants: { $all: id },
                     });
+
                     if (conversation) {
                         const setActiveConversation = await ConversationModel.findByIdAndUpdate(conversation._id, {
                             active: true,
                         });
                         await setActiveConversation.save();
                         return res.json(setActiveConversation._id.toString());
+                    } else {
+
                     }
+                } else {
+                    const existActiveConversation = await ConversationModel.findOne({
+                        $and: [
+                            { participants: { $all: id } },
+                        ]
+                    });
+                    const setActiveConversation = await ConversationModel.findByIdAndUpdate(existActiveConversation._id, {
+                        active: true,
+                    });
+                    await setActiveConversation.save();
+                    console.log("dadadadsa ==>>", setActiveConversation)
+                    return res.json(setActiveConversation._id.toString());
                 }
             }
         }
@@ -302,6 +323,8 @@ router.get("/get-conversations/:id", async(req, res) => {
                                 groupedUserInfo.push({...user,
                                     conversationId: conversation._id.toString(),
                                     ticketNumber: conversation.ticketNumber,
+                                    pinned: conversation.pinned,
+                                    updatedAt: conversation.updatedAt,
                                 })
                             }
                         })
@@ -390,9 +413,7 @@ router.get("/get-conversations/:id", async(req, res) => {
                 }
             } else {}
             return res.json({ usersInfo: groupedUserInfo, lastMessages: lastMessages });
-
         }
-
     } catch (error) {}
 });
 
@@ -401,50 +422,55 @@ router.get("/get-conversations/:id", async(req, res) => {
 router.post("/mark-message-read/", async(req, res) => {
     try {
         const { userId, conversationId } = req.body;
+
         const existConversation = await ConversationModel.findById(conversationId);
-        const existUser = await UserModel.findById(userId);
+        const existUser = await UserModel.findOne({ _id: userId });
 
         if (existConversation && existUser) {
             const messages = await MessagesModel.updateMany({
                 $and: [
-                    { conversationId: existConversation._id },
+                    { conversationId: existConversation._id.toString() },
                     { recipientId: existUser._id },
                     { read: 'no' },
                 ],
             }, { read: 'yes' });
 
-            return res.json(messages);
-
+            if (messages) {
+                return res.json(messages);
+            }
         }
     } catch (error) {
         console.log(error)
     }
 });
+
 router.get("/unread-messages/:id", async(req, res) => {
     try {
         const { id } = req.params;
-        const existUser = await UserModel.findById(id);
-        const existConversation = await ConversationModel.find({
-            participants: { $all: id }
-        });
-        let conversationsId = [];
-        existConversation.map((item) => { conversationsId.push(item._id.toString()) });
 
-        if (existConversation && existUser) {
+        const existUser = await UserModel.findById(id);
+
+        if (existUser) {
             const unreadMessages = await MessagesModel.find({
                 $and: [
-                    { conversationId: { $in: conversationsId } },
-                    { read: 'no' },
-                ]
+                    { read: "no" },
+                    { recipientId: id },
+                ],
             });
 
-            // if (unreadMessages) {
+            if (unreadMessages) {
+                let result = [];
+                unreadMessages.reduce((acc, elem) => {
+                    if (!acc[elem.conversationId]) {
+                        acc[elem.conversationId] = { id: elem.conversationId, qty: 0 };
+                        result.push(acc[elem.conversationId]);
+                    }
+                    acc[elem.conversationId].qty += 1;
+                    return acc;
+                }, {});
 
-            //     for (let x = 0; x <= unreadMessages.length; x++) {
-            //         console.log(unreadMessages[x])
-            //     }
-            //     // return res.json(unreadMessages)
-            // }
+                return res.json(result);
+            }
         }
 
     } catch (error) {
@@ -466,5 +492,67 @@ router.get("/conversation-media/:id", async(req, res) => {
     }
 });
 
+router.get("/recipient-info/:id", async(req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (id) {
+            // const existUser = UserModel.findOne({ _id: id });
+            // if (existUser) {
+            //     console.log(existUser)
+            //     return res.json(existUser)
+            // }
+        }
+    } catch (error) {
+        console.log(error)
+    }
+});
+
+router.post("/pin-conversation/", async(req, res) => {
+    try {
+        const { id } = req.body;
+
+        if (id) {
+            const existConversation = await ConversationModel.findById(id);
+
+            if (existConversation) {
+                const pinConversation = await ConversationModel.findByIdAndUpdate(id, {
+                    pinned: !existConversation.pinned,
+                });
+                await pinConversation.save();
+                console.log(pinConversation)
+                return res.json(pinConversation);
+            }
+        }
+    } catch (error) {
+        console.log(error)
+    }
+});
+
+router.post("/close-ticket/", async(req, res) => {
+    try {
+        const { id } = req.body;
+        const existConversation = await ConversationModel.findById(id);
+        if (existConversation) {
+            await MessagesModel.deleteMany({
+                conversationId: existConversation._id.toString()
+            });
+            await ConversationMediaModel.deleteMany({
+                conversationId: existConversation._id.toString()
+            });
+            const deletedConversation = await ConversationModel.deleteOne({ _id: id });
+            const folderName = `./uploads/conversations/${existConversation._id.toString()}`;
+            fs.rmSync(folderName, { recursive: true, force: true }, (err) => {
+                if (err) {
+                    return console.log("error occurred in deleting directory", err);
+                }
+            });
+            return res.json(deletedConversation);
+        }
+
+    } catch (error) {
+        console.log(error)
+    }
+});
 
 export default router;

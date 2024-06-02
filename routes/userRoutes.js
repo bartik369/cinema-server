@@ -30,6 +30,7 @@ router.post(`${process.env.API_AUTH}`,
                     email: user.email,
                     roles: user.roles,
                     member: user.member,
+                    avatar: user.avatar,
                 },
                 process.env.JWT_ACCESS_SECRET, { expiresIn: '30m' }
             );
@@ -38,6 +39,7 @@ router.post(`${process.env.API_AUTH}`,
                     email: user.email,
                     roles: user.roles,
                     member: user.member,
+                    avatar: user.avatar,
                 },
                 process.env.JWT_REFRESH_SECRET, { expiresIn: '18d' }
             );
@@ -137,6 +139,7 @@ router.get(`${process.env.API_REFRESH_TOKEN}`,
                     email: user.email,
                     roles: user.roles,
                     member: user.member,
+                    avatar: user.avatar,
                 },
                 process.env.JWT_ACCESS_SECRET, { expiresIn: '30m' }
             );
@@ -145,6 +148,7 @@ router.get(`${process.env.API_REFRESH_TOKEN}`,
                     email: user.email,
                     roles: user.roles,
                     member: user.member,
+                    avatar: user.avatar,
                 },
                 process.env.JWT_REFRESH_SECRET, { expiresIn: '18d' }
             );
